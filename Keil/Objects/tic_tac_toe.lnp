@@ -1,0 +1,3 @@
+".\Objects\main.obj" 
+TO ".\Objects\tic_tac_toe" 
+PRINT(".\Listings\tic_tac_toe.m51")

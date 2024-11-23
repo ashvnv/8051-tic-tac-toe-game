@@ -1,0 +1,1700 @@
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE     1
+
+
+MACRO ASSEMBLER A51 V8.2.7.0
+OBJECT MODULE PLACED IN .\Objects\main.obj
+ASSEMBLER INVOKED BY: D:\Programs\Windows\Install_dir\KeilC51\C51\BIN\A51.EXE main.a51 SET(SMALL) DEBUG PRINT(.\Listings
+                      \main.lst) OBJECT(.\Objects\main.obj) EP
+
+LOC  OBJ            LINE     SOURCE
+
+                       1     ;====================================
+                       2     ;       8051 TIC TAC TOE GAME
+                       3     ;       AUTHOR: ASHWIN VALLABAN
+                       4     ;       https://ashvnv.github.io/ashvnv/
+                       5     ;====================================
+                       6     
+                       7     ;====================================================================================
+                       8     ;       MIT License
+                       9     ;
+                      10     ;       Copyright (c) 2024 Ashwin Vallaban (ashvnv)
+                      11     ;
+                      12     ;       Permission is hereby granted, free of charge, to any person obtaining a copy
+                      13     ;       of this software and associated documentation files (the "Software"), to deal
+                      14     ;       in the Software without restriction, including without limitation the rights
+                      15     ;       to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+                      16     ;       copies of the Software, and to permit persons to whom the Software is
+                      17     ;       furnished to do so, subject to the following conditions:
+                      18     ;
+                      19     ;       The above copyright notice and this permission notice shall be included in all
+                      20     ;       copies or substantial portions of the Software.
+                      21     ;
+                      22     ;       THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+                      23     ;       IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+                      24     ;       FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+                      25     ;       AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+                      26     ;       LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+                      27     ;       OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+                      28     ;       SOFTWARE.
+                      29     ;====================================================================================
+                      30     
+                      31     
+                      32     ;       IN THIS PROJECT, CLASSIC TIC TAC TOE GAME IS SIMULATED.
+                      33     ;       3x3 DOT MATRIX DISPLAY IS USED TO SHOW THE X & AND 0
+                      34     ;       THERE ARE TWO MODES IN WHICH THE GAME CAN BE PLAYED. ONE IS MANUALLY WHEREIN TWO PL
+                             AYERS HAVE TO USE THE KAYBOARD.
+                      35     ;               SECOND MODE IS WITH THE ALGORITHM WHEREIN ONLY A SINGLE PLAYER IS PLAYING T
+                             HE GAME AND THE COMPUTER ACTS AS A SECOND PLAYER.
+                      36     
+                      37     ;       ALGORITHM:
+                      38     ;               PLAYER VS PLAYER:
+                      39     ;                       WHEN THE GAME STARTS, THE 7 SEGMENT DISPLAY SHOWS '1' INDICATING TH
+                             AT PLAYER 1 HAS TO PLAY THE GAME;
+                      40     ;                       THE PLAYER 1 IS ASSIGNED A 'X' ALWAYS.
+                      41     ;                       PLAYER 1 CAN USE THE KEYBOARD TO PLACE THE X ANYWHERE ON THE 3x3 MA
+                             TRIX.
+                      42     ;                       AFTER THE X IS PLACED, THE 7 SEGMENT WILL SHOW '2', INDICATING THAT
+                              PLAYER 2 HAS TO TAKE THE TURN.
+                      43     ;                       PLAYER 2 IS ASSIGNED A '0' AND CAN PLACE IT ANYWHERE ON THE MATRIX 
+                             LEAVING THE BLOCKS OCCUPIED BY 'X'.
+                      44     ;                       
+                      45     ;                       AFTER EACH STEP, THE THE ALGORITHM CHECKS IF A PLAYER HAS WON OR NO
+                             T.
+                      46     ;                       IF A PLAYER IS ABLE TO PERFORM A 3 PATTERN MATCH IN A STRAIGHT LINE
+                             , THAT PLAYER WINS THE GAME.
+                      47     
+                      48     ;               HOW ALGORITHM CHECKS IF THE PLAYER WON:
+                      49     ;                       THE GAME MATRIX OCCUPIES THE RAM LOCATION 0x40 TO 0x48.
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE     2
+
+                      50     
+                      51     ;---------- DISPLAY CONFIG --------------
+                      52     ;                       |   40H  |      41H      |      42H      |
+                      53     ;                       |   43H  |      44H      |      45H      |
+                      54     ;                       |   46H  |      47H      |      48H      |
+                      55     
+                      56     ;                       THE CHECKING IS DONE AS FOLLOWS:
+                      57     
+                      58     ;                               ;       -------- HORIZONTAL ----------
+                      59     ;                               1. CHECK THE 1ST ROW (40H TO 42H)
+                      60     ;                               2. CHECK THE 2ND ROW (43H TO 45H)
+                      61     ;                               3. CHECK THE 3RD ROW (46H TO 48H)
+                      62     ;                       
+                      63     ;                               ;       -------- VERTICAL ------------
+                      64     ;                               4. CHECK THE 1ST COLUMN (40H, 43H, 46H)
+                      65     ;                               5. CHECK THE 1ST COLUMN (41H, 44H, 47H)
+                      66     ;                               6. CHECK THE 1ST COLUMN (42H, 45H, 48H)
+                      67     
+                      68     ;                               ;       -------- DIAGONAL ------------
+                      69     ;                               7. CHECK THE BACK-DIAGONAL (40H, 44H, 48H)
+                      70     ;                               8. CHECK THE FORWARD-DIAGONAL (42H, 44H, 46H)
+                      71     
+                      72     ;                       THESE 8 STEPS ARE FOLLOWED AFTER EACH STEP TO CHECK IF A PLAYER HAS
+                              WON OR NOT
+                      73     
+                      74     ;       DOT MATRIX PATTERN
+                      75     ;               0: SHOW BLANK
+                      76     ;               1: SHOW 0
+                      77     ;               4: SHOW 1
+                      78     
+                      79     
+                      80     ;---------- DISPLAY CONFIG --------------
+                      81     ;                       |   40H  |      41H      |      42H      |
+                      82     ;                       |   43H  |      44H      |      45H      |
+                      83     ;                       |   46H  |      47H      |      48H      |
+                      84      
+                      85     ;DISPLAY UNIT 1: 0x40 0x41 0x42 0x43 0x44 0x45 0x46 0x47 0x48
+                      86             
+                      87     
+                      88     ;=== PORT PINS DEFINED ==
+                      89     ;FOR 4094
+  0090                90     DAT EQU P1.0
+  0091                91     CLK EQU P1.1
+  0092                92     CLK1 EQU P1.2
+  0093                93     OE_SHFT EQU P1.3
+  00A2                94     CLK2 EQU P2.2; 7 SEGMENT DISPLAY 
+                      95             
+                      96     ;PCF8574A
+  00A3                97     BTN0 EQU P2.3
+  00A4                98     BTN1 EQU P2.4
+                      99     
+                     100     
+                     101     ;I2C BUS
+  00A5               102     SCL EQU P2.5
+  00A6               103     SDA EQU P2.6
+                     104             
+  00A7               105     PLAY_MODE EQU P2.7
+                     106             
+                     107             
+                     108             
+                     109             
+                     110     ; === UTILIZED RAM LOCATIONS ===
+                     111     
+                     112     
+                     113     ;!!!!!!!!!!!!!!!!!! USED IN TIMER 1 ISR !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                     114     ;0x40 TO 0x48 FOR DISPLAY UNIT
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE     3
+
+                     115     
+                     116     ;0x54 IS THE 8 BIT COUNTER
+                     117     ;0x39 HAS THE ADDRESS OFFSET OF THE PARTICULAR CHARACTER [UNIT 1 DISP]
+                     118     
+                     119     ;0x3C STORING R1 POINTER VALUE FOR PRESERVING ISR
+                     120     ;0x3D STORING R0 POINTER VALUE FOR PRESERVING ISR
+                     121     
+                     122     ;0x3E FOR BACKING UP R1 AFTER ISR IS INITIATED
+                     123     ;0x3F FOR BACKING UP R0 AFTER ISR IS INITIATED
+                     124     
+                     125     ;0x55 FOR BACKING UP A
+                     126     ;0x3B IS USED TO BACKUP B REGISTER
+                     127     
+                     128     ;0x20.0 IS USED IN DISPLAY SUBROUTINE. IF CLR THEN STAGE 1 EXECUTED AFTER INTERRUPT IS SERV
+                             ICES ELSE STAGE 2
+                     129     ;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                     130     
+                     131     ;R7 IS USED AS A COUNTER IN GAME SUBROUTINES
+                     132     
+                     133     ;R4 USED AS A COUNTER IN I2C SUBROUTINE
+                     134     
+                     135     ;0x21 AND 0x4D ARE USED BY THE I2C KEYBOARD SUBROUTINE
+                     136     ;0x20.2 STATES IF THE READ BUTTON STATE IS VALID OR NOT
+                     137     
+                     138     
+                     139     ;0x20.1 IF CLR THEN PLAYER 1 IS PLAYING THE TURN, ELSE PLAYER 2
+                     140     
+                     141     ;0x20.3 STATES THE GAME MODE I.E. PLAYER VS PLAYER, PLAYER VS COMPUTER. IF SET THEN PLAYER 
+                             VS PLAYER
+                     142     
+                     143     ;R2 IS USED TO STATE 0x01 (X) OR 0x02 (O) VALUE FOR UPDATING THE DISPLAY MATRIX AFTER BUTTO
+                             N CLICK
+                     144     
+                     145     ;0x30 0x31 0x32 AND 0x20.4 ARE USED BY COMPUTER ALGORITHM ROUTINE
+                     146     
+                     147     ;R3 IS USED TO PRODUCE DELAY WHEN THE COMPUTER ALGORITHM PLAYS THE GAME
+                     148     
+                     149             
+                     150     
+0000                 151     ORG 0H
+0000 020250          152             LJMP START
+                     153     
+                     154     
+001B                 155     ORG 001BH
+                     156             ;TIMER 1 OVERFLOW OCCURS HERE
+                     157             ;THIS ROUTINE IS USED FOR UPDATING THE DISPLAY
+                     158     
+                     159             ;0x54 IS THE 8 BIT COUNTER
+                     160             ;0x39 HAS THE ADDRESS OFFSET OF THE PARTICULAR CHARACTER [UNIT 1 DISP]
+                     161             
+                     162             
+001B C28E            163             CLR TR1
+001D F555            164             MOV 0x55, A; BACKUP A
+001F 85F03B          165             MOV 0x3B, B; BACKUP B
+                     166             
+0022 85013E          167             MOV 0x3E, 0x01; BACKUP R1 POINTER
+0025 85003F          168             MOV 0x3F, 0x00; BACKUP R0 POINTER
+                     169             
+                     170             
+0028 853C01          171             MOV 0x01, 0x3C; RESTORE R1 POINTER
+002B 853D00          172             MOV 0x00, 0x3D; RESTORE R0 POINTER
+                     173             
+                     174             ;-------------- LOGIC STARTS HERE -------------
+002E 20002C          175             JB 0x20.0, STAGE_2_DISPLAY
+                     176             
+                     177             
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE     4
+
+                     178             ;---------- STAGE 1 -------------
+0031                 179             REPEAT_MAIN:
+                     180             ;TOGGLE THE ROW 4094
+0031 C292            181             CLR CLK1
+0033 C290            182             CLR DAT
+0035 D292            183             SETB CLK1
+                     184             
+0037                 185             REPEAT_SUBMAIN:
+0037 7940            186             MOV R1, #0x40
+                     187             
+0039                 188             REPEAT_CYCLE:   
+0039 E7              189             MOV A, @R1
+003A 75F008          190             MOV B, #8
+003D A4              191             MUL AB
+003E 2539            192             ADD A, 0x39; 0x39 HAS THE COLUMN ADDRESS OFFSET
+0040 120100          193             LCALL GET_DOT_PATTERN
+0043 F4              194             CPL A
+                     195             ;MOVE THE VALUE IN ACC SERIALLY
+0044 755408          196             MOV 0x54, #8
+                     197             
+0047                 198             KEEP_SHIFTING_DAT:
+0047 C3              199             CLR C
+0048 33              200             RLC A
+0049 C291            201             CLR CLK
+004B 9290            202             MOV DAT, C
+004D D291            203             SETB CLK
+004F D554F5          204             DJNZ 0x54, KEEP_SHIFTING_DAT
+                     205             
+0052 09              206             INC R1
+0053 B949E3          207             CJNE R1, #0x49, REPEAT_CYCLE
+                     208             ;SEND COMPLETE
+                     209     
+0056 D293            210             SETB OE_SHFT
+                     211     
+                     212     
+                     213             ;---------- STAGE 1 END ----------
+                     214             
+0058 D200            215             SETB 0x20.0
+005A 020076          216             LJMP RETURN_FROM_DISPLAY_SUBR
+                     217             
+                     218             
+005D                 219             STAGE_2_DISPLAY:
+                     220             ;----------- STAGE 2 -------------
+005D C293            221             CLR OE_SHFT
+005F E539            222             MOV A, 0x39
+0061 2401            223             ADD A, #0x01
+0063 F539            224             MOV 0x39, A
+0065 533907          225             ANL 0x39, #0x07
+0068 5408            226             ANL A, #0x08
+006A B408C4          227             CJNE A, #0x08, REPEAT_MAIN
+                     228             
+                     229             ;SEND 1, ENABLE A ROW
+006D C292            230             CLR CLK1
+006F D290            231             SETB DAT
+0071 D292            232             SETB CLK1
+0073 020037          233             LJMP REPEAT_SUBMAIN
+                     234             ;---------- STAGE 2 ENDS -------
+                     235             
+                     236             
+                     237             
+                     238             ;----------------------------------------------
+                     239             
+0076                 240             RETURN_FROM_DISPLAY_SUBR:
+0076 85013C          241             MOV 0x3C, 0x01; BACKUP R1 POINTER
+0079 85003D          242             MOV 0x3D, 0x00; BACKUP R0 POINTER
+                     243             
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE     5
+
+007C E555            244             MOV A, 0x55; RESTORE A
+007E 853BF0          245             MOV B, 0x3B; RESTORE B
+0081 853E01          246             MOV 0x01, 0x3E; RESTORE R1 POINTER
+0084 853F00          247             MOV 0x00, 0x3F; RESTORE R0 POINTER
+                     248             
+0087 758B00          249             MOV TL1, #0x00
+008A D28E            250             SETB TR1
+008C 32              251             RETI
+                     252     
+                     253     
+                     254     
+                     255     
+                     256     ;REFERENCE: https://github.com/dhepper/font8x8/blob/master/font8x8_basic.h
+                     257     ;PATTERN SHOWN FROM LAST ROW TO FIRST ROW
+                     258     ;DATA SHOULD BE CPL BEFORE MOVING TO PORT
+0100                 259     ORG 100H
+                     260             ;DEFINE DOT MATRIX CHARACTER PATTERNS
+                     261             
+                     262     ;TO ACCESS THIS DATA, USE MOVC A, @A + PC
+0100                 263             GET_DOT_PATTERN:
+0100 04              264             INC A; GET AROUND RET
+0101 83              265             MOVC A, @A + PC
+0102 22              266             RET
+                     267             
+0103                 268     ORG 103H
+                     269             ;----- FOR 0 (SHOW BLANK) -------
+0103 00              270             DB 0x00
+0104 00              271             DB 0x00
+0105 00              272             DB 0x00
+0106 00              273             DB 0x00
+0107 00              274             DB 0x00
+0108 00              275             DB 0x00
+0109 00              276             DB 0x00
+010A 00              277             DB 0x00
+                     278             
+                     279             ;----- FOR 1 (SHOW 0) ------
+010B 00              280             DB 0x00
+010C 1C              281             DB 0x1C
+010D 36              282             DB 0x36
+010E 63              283             DB 0x63                         
+010F 63              284             DB 0x63  
+0110 63              285             DB 0x63 
+0111 36              286             DB 0x36
+0112 1C              287             DB 0x1C 
+                     288                     
+0123                 289     ORG 123H
+                     290             ;----- FOR 4 (SHOW X) ------
+0123 00              291             DB 0x00
+0124 63              292             DB 0x63 
+0125 36              293             DB 0x36 
+0126 1C              294             DB 0x1C 
+0127 1C              295             DB 0x1C 
+0128 36              296             DB 0x36
+0129 63              297             DB 0x63  
+012A 63              298             DB 0x63 
+                     299             
+                     300     
+                     301     
+                     302     
+                     303             
+                     304             
+                     305     ;============= MAIN PROGRAM STARTS HERE =========
+0250                 306     ORG 250H
+0250                 307             START:
+                     308             
+                     309             ;MANUALLY CONFIGURE THE DISPLAY
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE     6
+
+                     310     ;       MOV 0x40, #0x01
+                     311     ;       MOV 0x41, #0x01
+                     312     ;       MOV 0x42, #0x01
+                     313             
+                     314     ;       --------- DEFINE TIMER0 FOR DISPLAY UPDATE --------
+0250 758921          315             MOV TMOD, #0x21; TIMER 1 8 BIT AUTORELOAD, TIMER 0 IN 16 BIT MODE
+0253 758D00          316             MOV TH1, #0x00
+0256 758B00          317             MOV TL1, #0x00
+                     318             
+0259 C200            319             CLR 0x20.0
+025B D2AF            320             SETB EA
+025D D2AB            321             SETB ET1; TIMER 0 OVERFLOW INTERRUPT
+025F D28E            322             SETB TR1
+                     323             
+                     324             
+                     325             
+                     326             
+                     327             ;PROGRAM FLOW:
+                     328             ;               THE PROGRAM WILL STAY IN THE INFINITE IDLE LOOP UNTIL A BUTTON IS C
+                             LICKED BY PLAYER 1
+                     329             ;               THE 'X' IS THEN MARKED ON THE DISPLAY
+                     330             ;               AFTER THAT THE PROGRAM CHECKS IF THE NEXT PLAYER IS A COMPUTER OR N
+                             OT. IF YES, THEN THE ALGORITHM PLAYS THE NEXT STEP, ELSE
+                     331             ;                       IT WAITS FOR THE PLAYER 2 TO CLICK THE VALID BUTTON.
+                     332             ;               AFTER EACH STEP BY EITHER PLAYER, 8 CHECKS ARE DONE TO SEE IF THE P
+                             LAYER WON
+                     333             ;               WHEN A PLAYER WINS THE GAME, ONLY THE CONSECUTIVE PATTERNS WHICH MA
+                             TCHED ARE SHOWN ON THE SCREEN AND THE REST OF THE 
+                     334             ;                       BLOCKS ARE MADE IDLE.
+                     335             ;               THE DISPLAY WILL BLANK WHEN THE PLAYER CLICKS ON START/RESTART BUTT
+                             ON.
+                     336             ;               AT ANY MOMENT, THEN THE PLAYER CLICKS ON START/RESTART BUTTON, THE 
+                             GAME WILL RESET
+                     337             
+0261                 338             RESET_JUMP:
+0261 120660          339             LCALL RESET_GAME; RESET THE GAME
+                     340             
+0264                 341             PLAYER_2_STEP_COMPLETE:
+0264 120638          342             LCALL SHOW_CHANCE_PLAYER_1; PLAYER 1 CHANCE TO PLAY THE GAME
+                     343             
+                     344             ;==================================================
+                     345             ;HERE CHECK FOR BUTTON STATE TO CHANGE
+0267                 346             WAIT_FOR_PLAYER_1:
+0267 30A33B          347             JNB BTN0, BTN_0_STATE_CHANGE
+026A 30A443          348             JNB BTN1, BTN_1_STATE_CHANGE
+                     349             
+026D                 350             PLAYER_1_STEP_INVALID:
+026D 80F8            351             SJMP WAIT_FOR_PLAYER_1
+                     352             ;==================================================
+                     353             
+026F                 354             PLAYER_1_STEP_COMPLETE:
+                     355             
+026F 12064C          356             LCALL SHOW_CHANCE_PLAYER_2; PLAYER 2 CHANCE TO PLAY THE GAME
+                     357             
+0272 30A708          358             JNB PLAY_MODE, COMPUTER_PLAYS; IF CLEAR THEN COMPUTER PLAYS THE NEXT STEP
+                     359             
+                     360             ;==================================================
+                     361             ;HERE CHECK FOR BUTTON STATE TO CHANGE
+0275                 362             WAIT_FOR_PLAYER_2:
+0275 30A32D          363             JNB BTN0, BTN_0_STATE_CHANGE
+0278 30A435          364             JNB BTN1, BTN_1_STATE_CHANGE
+                     365             
+027B                 366             PLAYER_2_STEP_INVALID:
+027B 80F8            367             SJMP WAIT_FOR_PLAYER_2
+                     368             ;==================================================
+                     369             
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE     7
+
+027D                 370             COMPUTER_PLAYS:
+                     371             ;CREATE A SMALL DELAY HERE USING TIMER 0
+027D 758C00          372             MOV TH0, #0x00
+0280 758A00          373             MOV TL0, #0x00
+                     374             
+0283 7B05            375             MOV R3, #0x05; COUNTER FOR DELAY
+0285 C28D            376             CLR TF0
+0287 D28C            377             SETB TR0
+0289                 378             WAIT_COMP_PLAY:
+0289 308DFD          379             JNB TF0, WAIT_COMP_PLAY
+028C C28D            380             CLR TF0
+028E DBF9            381             DJNZ R3, WAIT_COMP_PLAY
+0290 C28C            382             CLR TR0
+                     383             
+0292 12041D          384             LCALL EXEC_COMPUTER_ALGO; CALL THE COMPUTER ALGORITHM TO PLAY THE GAME
+0295 120347          385             LCALL GAME_WIN_CHECK_VALIDITY
+0298 0202A0          386             LJMP VALID_BTN_STATE_GOBACK
+                     387             
+                     388             ;----------------------------------------------------------------------------------
+                             --------
+                     389             
+                     390             
+029B                 391             INVALID_BTN_STATE_GOBACK:
+029B 3001CF          392                     JNB 0x20.1, PLAYER_1_STEP_INVALID; PLAYER 1 INVALID BUTTON STATE
+029E 80DB            393                     SJMP PLAYER_2_STEP_INVALID; PLAYER 2 INVALID BUTTON STATE
+                     394     
+02A0                 395             VALID_BTN_STATE_GOBACK:
+02A0 3001CC          396                     JNB 0x20.1, PLAYER_1_STEP_COMPLETE; PLAYER 1 ACTION COMPLETED
+02A3 80BF            397                     SJMP PLAYER_2_STEP_COMPLETE; PLAYER 2 ACTION COMPLETED
+                     398     
+                     399             
+02A5                 400             BTN_0_STATE_CHANGE:
+02A5 C202            401                     CLR 0x20.2; CLEAR VALID BUTTON STATE FLAG
+02A7 1205B6          402                     LCALL READ_BTN0; READ THE STATE OF BTN0 PCF8574A
+02AA 3002EE          403                     JNB 0x20.2, INVALID_BTN_STATE_GOBACK
+                     404                     
+                     405                     ;VALID BUTTON STATE FOUND. PERFORM THE ACTION
+                     406                     ;0x4D HAS THE BUTTON VALUE
+                     407                     
+02AD 0202BB          408                     LJMP PERFORM_BTN_ACTION
+                     409             
+                     410             
+02B0                 411             BTN_1_STATE_CHANGE:
+02B0 C202            412                     CLR 0x20.2; CLEAR VALID BUTTON STATE FLAG
+02B2 120607          413                     LCALL READ_BTN1; READ THE STATE OF BTN0 PCF8574A
+02B5 3002E3          414                     JNB 0x20.2, INVALID_BTN_STATE_GOBACK
+                     415                     
+                     416                     ;VALID BUTTON STATE FOUND. PERFORM THE ACTION
+                     417                     ;0x4D HAS THE BUTTON VALUE
+                     418                     
+02B8 0202BB          419                     LJMP PERFORM_BTN_ACTION
+                     420     
+                     421     
+                     422     
+02BB                 423     PERFORM_BTN_ACTION:
+                     424             ;CALL THIS FUNCTION TO PERFORM THE ACTION ON THE DISPLAY AFTER THE BUTTON CLICK
+                     425             ;0x4D SHOULD HAVE THE BUTTON WHICH WAS CLICKED
+                     426             ;R2 SHOULD HAVE THE VALUE WHICH SHOULD BE UPDATED ON THE DISPLAY
+                     427             ;THIS ROUTINE DOES NOT CHECK WHICH PLAYER IS PLAYING THE GAME
+                     428             
+02BB 200104          429             JB 0x20.1, PLAYER_2_O
+                     430             ;PLAYER 1 X
+02BE 7A04            431             MOV R2, #0x04; STORE THE VALUE X
+02C0 8002            432             SJMP PERFORM_ACTION
+                     433             
+                     434                             
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE     8
+
+02C2                 435             PLAYER_2_O:
+02C2 7A01            436             MOV R2, #0x01; STORE THE VALUE O
+                     437     
+02C4                 438             PERFORM_ACTION:
+                     439                     ;CHECK WHICH BUTTON WAS CLICKED AND THEN EXECUTE THE FUNCTION
+02C4 E54D            440                     MOV A, 0x4D; GET THE BUTTON VALUE
+                     441                     
+02C6 B4000A          442                     CJNE A, #0x00, CHK_NXT_PERFORM_ACTION0
+                     443                     ;11 CLICKED
+02C9 E540            444                     MOV A, 0x40
+02CB B4006D          445                     CJNE A, #0x00, ACTION_INVALID
+                     446                     ;VALID
+02CE 8A40            447                     MOV 0x40, R2
+02D0 020341          448                     LJMP ACTION_PERFORMED
+                     449                     
+02D3                 450                     CHK_NXT_PERFORM_ACTION0:
+02D3 B4010A          451                     CJNE A, #0x01, CHK_NXT_PERFORM_ACTION1
+                     452                     ;12 CLICKED
+02D6 E541            453                     MOV A, 0x41
+02D8 B40060          454                     CJNE A, #0x00, ACTION_INVALID
+                     455                     ;VALID
+02DB 8A41            456                     MOV 0x41, R2
+02DD 020341          457                     LJMP ACTION_PERFORMED
+                     458                     
+02E0                 459                     CHK_NXT_PERFORM_ACTION1:
+02E0 B4020A          460                     CJNE A, #0x02, CHK_NXT_PERFORM_ACTION2
+                     461                     ;13 CLICKED
+02E3 E542            462                     MOV A, 0x42
+02E5 B40053          463                     CJNE A, #0x00, ACTION_INVALID
+                     464                     ;VALID
+02E8 8A42            465                     MOV 0x42, R2
+02EA 020341          466                     LJMP ACTION_PERFORMED
+                     467                     
+02ED                 468                     CHK_NXT_PERFORM_ACTION2:
+02ED B4030A          469                     CJNE A, #0x03, CHK_NXT_PERFORM_ACTION3
+                     470                     ;21 CLICKED
+02F0 E543            471                     MOV A, 0x43
+02F2 B40046          472                     CJNE A, #0x00, ACTION_INVALID
+                     473                     ;VALID
+02F5 8A43            474                     MOV 0x43, R2
+02F7 020341          475                     LJMP ACTION_PERFORMED
+                     476                     
+02FA                 477                     CHK_NXT_PERFORM_ACTION3:
+02FA B4040A          478                     CJNE A, #0x04, CHK_NXT_PERFORM_ACTION4
+                     479                     ;22 CLICKED
+02FD E544            480                     MOV A, 0x44
+02FF B40039          481                     CJNE A, #0x00, ACTION_INVALID
+                     482                     ;VALID
+0302 8A44            483                     MOV 0x44, R2
+0304 020341          484                     LJMP ACTION_PERFORMED
+                     485                     
+0307                 486                     CHK_NXT_PERFORM_ACTION4:
+0307 B4050A          487                     CJNE A, #0x05, CHK_NXT_PERFORM_ACTION5
+                     488                     ;23 CLICKED
+030A E545            489                     MOV A, 0x45
+030C B4002C          490                     CJNE A, #0x00, ACTION_INVALID
+                     491                     ;VALID
+030F 8A45            492                     MOV 0x45, R2
+0311 020341          493                     LJMP ACTION_PERFORMED
+                     494                     
+0314                 495                     CHK_NXT_PERFORM_ACTION5:
+0314 B4060A          496                     CJNE A, #0x06, CHK_NXT_PERFORM_ACTION6
+                     497                     ;31 CLICKED
+0317 E546            498                     MOV A, 0x46
+0319 B4001F          499                     CJNE A, #0x00, ACTION_INVALID
+                     500                     ;VALID
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE     9
+
+031C 8A46            501                     MOV 0x46, R2
+031E 020341          502                     LJMP ACTION_PERFORMED
+                     503                     
+0321                 504                     CHK_NXT_PERFORM_ACTION6:
+0321 B4070A          505                     CJNE A, #0x07, CHK_NXT_PERFORM_ACTION7
+                     506                     ;32 CLICKED
+0324 E547            507                     MOV A, 0x47
+0326 B40012          508                     CJNE A, #0x00, ACTION_INVALID
+                     509                     ;VALID
+0329 8A47            510                     MOV 0x47, R2
+032B 020341          511                     LJMP ACTION_PERFORMED
+                     512                     
+032E                 513                     CHK_NXT_PERFORM_ACTION7:
+032E B4080D          514                     CJNE A, #0x08, CHK_NXT_PERFORM_ACTION8
+                     515                     ;33 CLICKED
+0331 E548            516                     MOV A, 0x48
+0333 B40005          517                     CJNE A, #0x00, ACTION_INVALID
+                     518                     ;VALID
+0336 8A48            519                     MOV 0x48, R2
+0338 020341          520                     LJMP ACTION_PERFORMED
+                     521                     
+033B                 522                     ACTION_INVALID:
+033B 02029B          523                     LJMP INVALID_BTN_STATE_GOBACK
+                     524                     
+033E                 525                     CHK_NXT_PERFORM_ACTION8:
+                     526                     ;RESET/RESTART CLICKED
+033E 020261          527                     LJMP RESET_JUMP; 
+                     528                     
+                     529                     
+0341                 530             ACTION_PERFORMED:
+                     531             ;NOW PERORM THE VALIDATON CHECK HERE
+0341 120347          532             LCALL GAME_WIN_CHECK_VALIDITY
+                     533             
+0344 0202A0          534             LJMP VALID_BTN_STATE_GOBACK
+                     535             
+                     536     
+                     537     ;--------------------------------------------   
+0347                 538     GAME_WIN_CHECK_VALIDITY:
+                     539     ;                               ;       -------- HORIZONTAL ----------
+                     540     ;                               1. CHECK THE 1ST ROW (40H TO 42H)
+                     541     ;                               2. CHECK THE 2ND ROW (43H TO 45H)
+                     542     ;                               3. CHECK THE 3RD ROW (46H TO 48H)
+                     543     ;                       
+                     544     ;                               ;       -------- VERTICAL ------------
+                     545     ;                               4. CHECK THE 1ST COLUMN (40H, 43H, 46H)
+                     546     ;                               5. CHECK THE 1ST COLUMN (41H, 44H, 47H)
+                     547     ;                               6. CHECK THE 1ST COLUMN (42H, 45H, 48H)
+                     548     
+                     549     ;                               ;       -------- DIAGONAL ------------
+                     550     ;                               7. CHECK THE BACK-DIAGONAL (40H, 44H, 48H)
+                     551     ;                               8. CHECK THE FORWARD-DIAGONAL (42H, 44H, 46H)
+                     552     
+                     553             ;CHECK IF THE GAME IS WON BY THE PLAYER
+                     554             ;R2 SHOULD HAVE THE DISPLAY VALUE WHICH IS TO BE CHECKED
+                     555             
+                     556             ;---------------------------------
+                     557             ;1. CHECK THE 1ST ROW (40H TO 42H)
+0347 E540            558             MOV A, 0x40
+0349 2541            559             ADD A, 0x41
+034B 2542            560             ADD A, 0x42
+034D B40306          561             CJNE A, #0x03, CHK_1STROW_X
+                     562             ;MATCH FOUND FOR PATTERN O
+0350 12066D          563             LCALL CLEAR_EXCEPT_1R
+0353 020408          564             LJMP VALIDATION_PATTER
+                     565             
+                     566             
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE    10
+
+                     567             
+0356                 568             CHK_1STROW_X:
+0356 B40C06          569             CJNE A, #0x0C, CHK_2NDROW
+                     570             ;MATCH FOUND FOR PATTERN X
+0359 12066D          571             LCALL CLEAR_EXCEPT_1R
+035C 020408          572             LJMP VALIDATION_PATTER
+                     573             ;---------------------------------
+                     574             
+                     575             
+                     576             ;---------------------------------
+035F                 577             CHK_2NDROW:
+035F E543            578             MOV A, 0x43
+0361 2544            579             ADD A, 0x44
+0363 2545            580             ADD A, 0x45
+0365 B40306          581             CJNE A, #0x03, CHK_2NDROW_X
+                     582             ;MATCH FOUND FOR PATTERN 0
+0368 120680          583             LCALL CLEAR_EXCEPT_2R
+036B 020408          584             LJMP VALIDATION_PATTER
+                     585             
+                     586             
+036E                 587             CHK_2NDROW_X:
+036E B40C06          588             CJNE A, #0x0C, CHK_3RDROW
+                     589             ;MATCH FOUND FOR PATTERN X
+0371 120680          590             LCALL CLEAR_EXCEPT_2R
+0374 020408          591             LJMP VALIDATION_PATTER
+                     592             ;---------------------------------
+                     593             
+                     594             
+                     595             ;---------------------------------
+0377                 596             CHK_3RDROW:
+0377 E546            597             MOV A, 0x46
+0379 2547            598             ADD A, 0x47
+037B 2548            599             ADD A, 0x48
+037D B40306          600             CJNE A, #0x03, CHK_3RDROW_X
+                     601             ;MATCH FOUND FOR PATTERN 0
+0380 120693          602             LCALL CLEAR_EXCEPT_3R
+0383 020408          603             LJMP VALIDATION_PATTER
+                     604             
+                     605             
+0386                 606             CHK_3RDROW_X:
+0386 B40C06          607             CJNE A, #0x0C, CHK_1STCOL
+                     608             ;MATCH FOUND FOR PATTERN X
+0389 120693          609             LCALL CLEAR_EXCEPT_3R
+038C 020408          610             LJMP VALIDATION_PATTER
+                     611             ;---------------------------------
+                     612             
+                     613             
+                     614             ;---------------------------------
+038F                 615             CHK_1STCOL:
+038F E540            616             MOV A, 0x40
+0391 2543            617             ADD A, 0x43
+0393 2546            618             ADD A, 0x46
+0395 B40306          619             CJNE A, #0x03, CHK_1STCOL_X
+                     620             ;MATCH FOUND FOR PATTERN 0
+0398 1206A6          621             LCALL CLEAR_EXCEPT_1C
+039B 020408          622             LJMP VALIDATION_PATTER
+                     623             
+                     624             
+039E                 625             CHK_1STCOL_X:
+039E B40C06          626             CJNE A, #0x0C, CHK_2NDCOL
+                     627             ;MATCH FOUND FOR PATTERN X
+03A1 1206A6          628             LCALL CLEAR_EXCEPT_1C
+03A4 020408          629             LJMP VALIDATION_PATTER
+                     630             ;---------------------------------
+                     631             
+                     632             
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE    11
+
+                     633             ;---------------------------------
+03A7                 634             CHK_2NDCOL:
+03A7 E541            635             MOV A, 0x41
+03A9 2544            636             ADD A, 0x44
+03AB 2547            637             ADD A, 0x47
+03AD B40306          638             CJNE A, #0x03, CHK_2NDCOL_X
+                     639             ;MATCH FOUND FOR PATTERN 0
+03B0 1206B9          640             LCALL CLEAR_EXCEPT_2C
+03B3 020408          641             LJMP VALIDATION_PATTER
+                     642             
+                     643             
+03B6                 644             CHK_2NDCOL_X:
+03B6 B40C06          645             CJNE A, #0x0C, CHK_3RDCOL
+                     646             ;MATCH FOUND FOR PATTERN X
+03B9 1206B9          647             LCALL CLEAR_EXCEPT_2C
+03BC 020408          648             LJMP VALIDATION_PATTER
+                     649             ;---------------------------------
+                     650             
+                     651             
+                     652             ;---------------------------------
+03BF                 653             CHK_3RDCOL:
+03BF E542            654             MOV A, 0x42
+03C1 2545            655             ADD A, 0x45
+03C3 2548            656             ADD A, 0x48
+03C5 B40306          657             CJNE A, #0x03, CHK_3RDCOL_X
+                     658             ;MATCH FOUND FOR PATTERN 0
+03C8 1206CC          659             LCALL CLEAR_EXCEPT_3C
+03CB 020408          660             LJMP VALIDATION_PATTER
+                     661             
+                     662             
+03CE                 663             CHK_3RDCOL_X:
+03CE B40C06          664             CJNE A, #0x0C, CHK_BACKDIAG
+                     665             ;MATCH FOUND FOR PATTERN X
+03D1 1206CC          666             LCALL CLEAR_EXCEPT_3C
+03D4 020408          667             LJMP VALIDATION_PATTER
+                     668             ;---------------------------------
+                     669             
+                     670             
+                     671             ;---------------------------------
+03D7                 672             CHK_BACKDIAG:
+03D7 E540            673             MOV A, 0x40
+03D9 2544            674             ADD A, 0x44
+03DB 2548            675             ADD A, 0x48
+03DD B40306          676             CJNE A, #0x03, CHK_BACKDIAG_X
+                     677             ;MATCH FOUND FOR PATTERN 0
+03E0 1206DF          678             LCALL CLEAR_EXCEPT_BD
+03E3 020408          679             LJMP VALIDATION_PATTER
+                     680             
+                     681             
+03E6                 682             CHK_BACKDIAG_X:
+03E6 B40C06          683             CJNE A, #0x0C, CHK_FORWARDDIAG
+                     684             ;MATCH FOUND FOR PATTERN X
+03E9 1206DF          685             LCALL CLEAR_EXCEPT_BD
+03EC 020408          686             LJMP VALIDATION_PATTER
+                     687             ;---------------------------------
+                     688             
+                     689             
+                     690             ;---------------------------------
+03EF                 691             CHK_FORWARDDIAG:
+03EF E542            692             MOV A, 0x42
+03F1 2544            693             ADD A, 0x44
+03F3 2546            694             ADD A, 0x46
+03F5 B40306          695             CJNE A, #0x03, CHK_FORWARDDIAG_X
+                     696             ;MATCH FOUND FOR PATTERN 0
+03F8 1206F2          697             LCALL CLEAR_EXCEPT_FD
+03FB 020408          698             LJMP VALIDATION_PATTER
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE    12
+
+                     699             
+                     700             
+03FE                 701             CHK_FORWARDDIAG_X:
+03FE B40C06          702             CJNE A, #0x0C, NO_VALIDATION_PATTERN
+                     703             ;MATCH FOUND FOR PATTERN X
+0401 1206F2          704             LCALL CLEAR_EXCEPT_FD
+0404 020408          705             LJMP VALIDATION_PATTER
+                     706             ;---------------------------------
+                     707             
+                     708             
+0407                 709             NO_VALIDATION_PATTERN:
+                     710             ;NO PATTERN FOUND. PLAYER DID NOT WIN. RETURN TO NORMAL ROUTINE
+                     711     
+0407 22              712             RET
+                     713             
+                     714             
+0408                 715             VALIDATION_PATTER:
+                     716             ;PLAYER WON. WAIT FOR RESTART/RESET BUTTON CLICK
+                     717             
+0408                 718             WAIT_FOR_RESET_AFTER_VALIDATION:
+0408 30A402          719             JNB BTN1, BTN_1_STATE_CHANGE_VALIDATION
+040B 80FB            720             SJMP WAIT_FOR_RESET_AFTER_VALIDATION
+                     721             
+                     722             
+040D                 723             BTN_1_STATE_CHANGE_VALIDATION:
+                     724             ;CHECK IF RESET BUTTON WAS CLICKED
+040D C202            725                     CLR 0x20.2; CLEAR VALID BUTTON FLAG
+040F 120607          726                     LCALL READ_BTN1
+0412 3002F3          727                     JNB 0x20.2, WAIT_FOR_RESET_AFTER_VALIDATION
+                     728                     
+                     729                     ;VALID BUTTON CLICK
+0415 E54D            730                     MOV A, 0x4D; GET THE BUTTON VALUE
+                     731                     
+0417 B409EE          732                     CJNE A, #0x09, WAIT_FOR_RESET_AFTER_VALIDATION
+                     733                     ;RESET BUTTON CLICKED
+041A 020261          734                     LJMP RESET_JUMP
+                     735                     
+                     736             
+                     737     
+                     738     
+                     739     ;-------------- COMPUTER ALGORITHM -------------------
+                     740     ;HERE THE COMPUTER ALGORITHM SUBROUTINES ARE PRESENT
+                     741     ;       ALGORITHM FLOW:
+                     742     ;       A SIMPLE INEFFICIENT ALGORITHM IS USED HERE.
+                     743     ;       MORE MORE EFFICIENT ALGORITHM, MINMAX GAME THEORY CAN BE USED.
+                     744     ;       I HAVE NOT IMPLEMENTED THAT AS IT USES RECURSION, AND IN ASSEMBLY, RECURSION IS DIF
+                             FICULT TO EXECUTE
+                     745     ;       REF: https://www.neverstopbuilding.com/blog/minimax
+                     746     
+041D                 747             EXEC_COMPUTER_ALGO:
+                     748             ;FIRST CHECK IF 2 '0' PATTERN IN A STRAIGHT LINE CAN BE FOUND. IF YES, ADD 'O' TO T
+                             HE THIRD BLOCK
+                     749             ;ELSE IF CHECK IF THE MIDDLE BLOCK IS OCCUPIED. IF NO, THEN OCCUPY IT.
+                     750             ;ELSE IF CHECK IF 2 CONSECUTIVE 'X' CAN BE FOUND IN A STRAIGHT LINE, IF YES THEN AD
+                             D THIRD 'O'
+                     751             ;ELSE IF ADD 'O' TO THE CORNER BLOCK WHICH IS NOT OCCUPIED
+                     752             ;ELSE IF ADD 'O' TO ANY AVAILABLE BLOCK
+                     753             
+                     754             
+                     755             ;==================== ;FIRST CHECK IF 2 '0' PATTERN IN A STRAIGHT LINE CAN BE FOUND
+                             . IF YES, ADD 'O' TO THE THIRD BLOCK ============    
+041D 753002          756             MOV 0x30, #0x02; CHECK FOR 2 'O' PATTERNS
+0420 753201          757             MOV 0x32, #0x01; VALUE TO BE ADDED WHEN THE PATTERN IS FOUND
+0423 120470          758             LCALL COMP_ALGO_CHECK_CONSECUTIVES
+0426 200446          759             JB 0x20.4, COMPLETED_EXEC_COMPUTER_ALGO
+                     760             ;PATTERN NOT FOUND. MOVE TO NEXT STAGE
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE    13
+
+                     761             
+                     762             
+                     763             ;==================== ;CHECK IF THE MIDDLE BLOCK IS OCCUPIED. IF NO, THEN OCCUPY IT
+                             . ============
+0429 E544            764             MOV A, 0x44
+042B 7005            765             JNZ STAGENXT0_JUMP; IF OCCUPIED THEN MOVE TO NEXT STAGE
+                     766             ;MIDDLE NOT OCCUPIED. OCCUPY IT
+042D 754401          767             MOV 0x44, #0x01; ADD 0 PATTERN
+0430 803D            768             SJMP COMPLETED_EXEC_COMPUTER_ALGO
+                     769             
+                     770     
+0432                 771             STAGENXT0_JUMP:
+                     772             ;==================== ;CHECK IF 2 CONSECUTIVE 'X' CAN BE FOUND IN A STRAIGHT LINE, 
+                             IF YES THEN ADD THIRD 'O' ============
+0432 753008          773             MOV 0x30, #0x08; CHECK FOR 2 'X' PATTERNS
+0435 753201          774             MOV 0x32, #0x01; VALUE TO BE ADDED WHEN THE PATTERN IS FOUND
+0438 120470          775             LCALL COMP_ALGO_CHECK_CONSECUTIVES
+043B 200431          776             JB 0x20.4, COMPLETED_EXEC_COMPUTER_ALGO
+                     777             ;PATTERN NOT FOUND. MOVE TO NEXT STAGE
+                     778             
+                     779     
+                     780             ;======== ADD 'O' TO THE CORNER BLOCK WHICH IS NOT OCCUPIED ========
+043E E540            781             MOV A, 0x40
+0440 B40005          782             CJNE A, #0x00, CHK_NXT_ADD_O_PATT0
+0443 754001          783             MOV 0x40, #0x01
+0446 8027            784             SJMP COMPLETED_EXEC_COMPUTER_ALGO
+                     785             
+0448                 786             CHK_NXT_ADD_O_PATT0:
+0448 E542            787             MOV A, 0x42
+044A B40005          788             CJNE A, #0x00, CHK_NXT_ADD_0_PATT1
+044D 754201          789             MOV 0x42, #0x01
+0450 801D            790             SJMP COMPLETED_EXEC_COMPUTER_ALGO
+                     791     
+0452                 792             CHK_NXT_ADD_0_PATT1:
+0452 E546            793             MOV A, 0x46
+0454 B40005          794             CJNE A, #0x00, CHK_NXT_ADD_0_PATT2
+0457 754601          795             MOV 0x46, #0x01
+045A 8013            796             SJMP COMPLETED_EXEC_COMPUTER_ALGO
+                     797             
+045C                 798             CHK_NXT_ADD_0_PATT2:
+045C E548            799             MOV A, 0x48
+045E B40005          800             CJNE A, #0x00, STAGENXT1_JUMP
+0461 754801          801             MOV 0x48, #0x01
+0464 8009            802             SJMP COMPLETED_EXEC_COMPUTER_ALGO
+                     803             
+                     804             
+                     805             
+0466                 806             STAGENXT1_JUMP:
+                     807             ; ========= ;ADD 'O' TO ANY AVAILABLE BLOCK ==========
+0466 783F            808             MOV R0, #0x3F; START ADD OF MATRIX
+                     809             
+0468                 810             REPEAT_TILL_PATT_FOUND:
+0468 08              811             INC R0
+0469 E6              812             MOV A, @R0
+046A B400FB          813             CJNE A, #0x00, REPEAT_TILL_PATT_FOUND
+046D 7601            814             MOV @R0, #0x01; ADD 0 PATTERN
+                     815             
+                     816     
+046F                 817             COMPLETED_EXEC_COMPUTER_ALGO:
+046F 22              818             RET
+                     819             
+                     820             
+                     821             
+0470                 822     COMP_ALGO_CHECK_CONSECUTIVES:
+                     823     ;CALL THIS ROUTINE TO CHECK ALL THE POSSIBILITY IF A PATTERN CAN BE FOUND CONSECUTIVELY.
+                     824             ;0x30 HAS THE VALUE TO BE CHECKED FOR CONSECUTIVE POSSIBLITY
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE    14
+
+                     825             ;EG TO CHECK IF THERE ARE TWO CONSECUTIVE 'X' PATTER, 0x30 SHOULD BE 0x08.
+                     826             ;0x31 HAS THE POSSIBLITY VALUE WHERE THIS PATTERN WAS FOUND.
+                     827             ;0x31 POSSIBLE VALUES:
+                     828             ;       0: NOT FOUND THE CONSECUTIVE PATTERNS
+                     829     ;               1. CHECK THE 1ST ROW (40H TO 42H) FOUND HERE
+                     830     ;               2. CHECK THE 2ND ROW (43H TO 45H) FOUND HERE
+                     831     ;               3. CHECK THE 3RD ROW (46H TO 48H) FOUND HERE
+                     832     ;               4. CHECK THE 1ST COLUMN (40H, 43H, 46H) FOUND HERE
+                     833     ;               5. CHECK THE 1ST COLUMN (41H, 44H, 47H) FOUND HERE
+                     834     ;               6. CHECK THE 1ST COLUMN (42H, 45H, 48H) FOUND HERE
+                     835     ;               7. CHECK THE BACK-DIAGONAL (40H, 44H, 48H) FOUND HERE
+                     836     ;               8. CHECK THE FORWARD-DIAGONAL (42H, 44H, 46H) FOUND HERE
+                     837     ;       0x32 SHOULD CONTAIN THE VALUE WHICH WILL BE ADDED TO THE CONSECUTIVE BLOCK IF FOUND
+                     838     ;       0x20.4 WILL BE SET IF THE ROUTINE FOUND PATTERN AND THEN EXECUTED THE TASK
+                     839     
+                     840     ;========= ALGORITHM ==============
+                     841             ;---------------------------------
+                     842             ;1. CHECK THE 1ST ROW (40H TO 42H)
+0470 E540            843             MOV A, 0x40
+0472 2541            844             ADD A, 0x41
+0474 2542            845             ADD A, 0x42
+0476 B5301F          846             CJNE A, 0x30, CHK_2NDROW_S0
+                     847             ;MATCH FOUND FOR PATTERN
+                     848             
+0479 753101          849             MOV 0x31, #0x01
+                     850             
+047C E540            851             MOV A, 0x40
+047E B40006          852             CJNE A, #0x00, CHK_NXT0_1R_S0
+0481 754001          853             MOV 0x40, #0x01; ADD 0
+0484 0205B3          854             LJMP ALGO_STAGE_COMPLETE
+                     855             
+0487                 856             CHK_NXT0_1R_S0:
+0487 E541            857             MOV A, 0x41
+0489 B40006          858             CJNE A, #0x00, CHK_NXT1_1R_S0
+048C 754101          859             MOV 0x41, #0x01; ADD 0
+048F 0205B3          860             LJMP ALGO_STAGE_COMPLETE
+                     861             
+0492                 862             CHK_NXT1_1R_S0:
+0492 754201          863             MOV 0x42, #0x01; ADD 0
+                     864             
+0495 0205B3          865             LJMP ALGO_STAGE_COMPLETE
+                     866             ;---------------------------------
+                     867             
+                     868             
+                     869             ;---------------------------------
+0498                 870             CHK_2NDROW_S0:
+0498 E543            871             MOV A, 0x43
+049A 2544            872             ADD A, 0x44
+049C 2545            873             ADD A, 0x45
+049E B5301F          874             CJNE A, 0x30, CHK_3RDROW_S0
+                     875             ;MATCH FOUND FOR PATTERN
+                     876             
+04A1 753102          877             MOV 0x31, #0x02
+                     878             
+04A4 E543            879             MOV A, 0x43
+04A6 B40006          880             CJNE A, #0x00, CHK_NXT0_2R_S0
+04A9 754301          881             MOV 0x43, #0x01; ADD 0
+04AC 0205B3          882             LJMP ALGO_STAGE_COMPLETE
+                     883             
+04AF                 884             CHK_NXT0_2R_S0:
+04AF E544            885             MOV A, 0x44
+04B1 B40006          886             CJNE A, #0x00, CHK_NXT1_2R_S0
+04B4 754401          887             MOV 0x44, #0x01; ADD 0
+04B7 0205B3          888             LJMP ALGO_STAGE_COMPLETE
+                     889             
+04BA                 890             CHK_NXT1_2R_S0:
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE    15
+
+04BA 754501          891             MOV 0x45, #0x01; ADD 0
+04BD 0205B3          892             LJMP ALGO_STAGE_COMPLETE
+                     893             
+                     894             ;---------------------------------
+                     895             
+                     896             
+                     897             ;---------------------------------
+04C0                 898             CHK_3RDROW_S0:
+04C0 E546            899             MOV A, 0x46
+04C2 2547            900             ADD A, 0x47
+04C4 2548            901             ADD A, 0x48
+04C6 B5301F          902             CJNE A, 0x30, CHK_1STCOL_S0
+                     903             ;MATCH FOUND FOR PATTERN
+                     904             
+04C9 753103          905             MOV 0x31, #0x03
+                     906             
+04CC E546            907             MOV A, 0x46
+04CE B40006          908             CJNE A, #0x00, CHK_NXT0_3R_S0
+04D1 754601          909             MOV 0x46, #0x01; ADD 0
+04D4 0205B3          910             LJMP ALGO_STAGE_COMPLETE
+                     911             
+04D7                 912             CHK_NXT0_3R_S0:
+04D7 E547            913             MOV A, 0x47
+04D9 B40006          914             CJNE A, #0x00, CHK_NXT1_3R_S0
+04DC 754701          915             MOV 0x47, #0x01; ADD 0
+04DF 0205B3          916             LJMP ALGO_STAGE_COMPLETE
+                     917             
+04E2                 918             CHK_NXT1_3R_S0:
+04E2 754801          919             MOV 0x48, #0x01; ADD 0
+                     920     
+04E5 0205B3          921             LJMP ALGO_STAGE_COMPLETE
+                     922             
+                     923             ;---------------------------------
+                     924             
+                     925             
+                     926             ;---------------------------------
+04E8                 927             CHK_1STCOL_S0:
+04E8 E540            928             MOV A, 0x40
+04EA 2543            929             ADD A, 0x43
+04EC 2546            930             ADD A, 0x46
+04EE B5301F          931             CJNE A, 0x30, CHK_2NDCOL_S0
+                     932             ;MATCH FOUND FOR PATTERN
+                     933             
+04F1 753104          934             MOV 0x31, #0x04
+                     935             
+04F4 E540            936             MOV A, 0x40
+04F6 B40006          937             CJNE A, #0x00, CHK_NXT0_1C_S0
+04F9 754001          938             MOV 0x40, #0x01; ADD 0
+04FC 0205B3          939             LJMP ALGO_STAGE_COMPLETE
+                     940             
+04FF                 941             CHK_NXT0_1C_S0:
+04FF E543            942             MOV A, 0x43
+0501 B40006          943             CJNE A, #0x00, CHK_NXT1_1C_S0
+0504 754301          944             MOV 0x43, #0x01; ADD 0
+0507 0205B3          945             LJMP ALGO_STAGE_COMPLETE
+                     946             
+050A                 947             CHK_NXT1_1C_S0:
+050A 754601          948             MOV 0x46, #0x01; ADD 0
+050D 0205B3          949             LJMP ALGO_STAGE_COMPLETE
+                     950             ;---------------------------------
+                     951             
+                     952             
+                     953             ;---------------------------------
+0510                 954             CHK_2NDCOL_S0:
+0510 E541            955             MOV A, 0x41
+0512 2544            956             ADD A, 0x44
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE    16
+
+0514 2547            957             ADD A, 0x47
+0516 B5301F          958             CJNE A, 0x30, CHK_3RDCOL_S0
+                     959             ;MATCH FOUND FOR PATTERN
+                     960             
+0519 753105          961             MOV 0x31, #0x05
+                     962             
+051C E541            963             MOV A, 0x41
+051E B40006          964             CJNE A, #0x00, CHK_NXT0_2C_S0
+0521 754101          965             MOV 0x41, #0x01; ADD 0
+0524 0205B3          966             LJMP ALGO_STAGE_COMPLETE
+                     967             
+0527                 968             CHK_NXT0_2C_S0:
+0527 E544            969             MOV A, 0x44
+0529 B40006          970             CJNE A, #0x00, CHK_NXT1_2C_S0
+052C 754401          971             MOV 0x44, #0x01; ADD 0
+052F 0205B3          972             LJMP ALGO_STAGE_COMPLETE
+                     973             
+0532                 974             CHK_NXT1_2C_S0:
+0532 754701          975             MOV 0x47, #0x01; ADD 0
+0535 0205B3          976             LJMP ALGO_STAGE_COMPLETE
+                     977             
+                     978             ;---------------------------------
+                     979             
+                     980             
+                     981             ;---------------------------------
+0538                 982             CHK_3RDCOL_S0:
+0538 E542            983             MOV A, 0x42
+053A 2545            984             ADD A, 0x45
+053C 2548            985             ADD A, 0x48
+053E B5301F          986             CJNE A, 0x30, CHK_BACKDIAG_S0
+                     987             ;MATCH FOUND FOR PATTERN
+                     988     
+0541 753106          989             MOV 0x31, #0x06
+                     990             
+0544 E542            991             MOV A, 0x42
+0546 B40006          992             CJNE A, #0x00, CHK_NXT0_3C_S0
+0549 754201          993             MOV 0x42, #0x01; ADD 0
+054C 0205B3          994             LJMP ALGO_STAGE_COMPLETE
+                     995             
+054F                 996             CHK_NXT0_3C_S0:
+054F E545            997             MOV A, 0x45
+0551 B40006          998             CJNE A, #0x00, CHK_NXT1_3C_S0
+0554 754501          999             MOV 0x45, #0x01; ADD 0
+0557 0205B3         1000             LJMP ALGO_STAGE_COMPLETE
+                    1001             
+055A                1002             CHK_NXT1_3C_S0:
+055A 754801         1003             MOV 0x48, #0x01; ADD 0
+055D 0205B3         1004             LJMP ALGO_STAGE_COMPLETE
+                    1005             
+                    1006             ;---------------------------------
+                    1007             
+                    1008             
+                    1009             ;---------------------------------
+0560                1010             CHK_BACKDIAG_S0:
+0560 E540           1011             MOV A, 0x40
+0562 2544           1012             ADD A, 0x44
+0564 2548           1013             ADD A, 0x48
+0566 B5301F         1014             CJNE A, 0x30, CHK_FORWARDDIAG_S0
+                    1015             ;MATCH FOUND FOR PATTERN
+                    1016             
+0569 753107         1017             MOV 0x31, #0x07
+                    1018             
+056C E540           1019             MOV A, 0x40
+056E B40006         1020             CJNE A, #0x00, CHK_NXT0_BD_S0
+0571 754001         1021             MOV 0x40, #0x01; ADD 0
+0574 0205B3         1022             LJMP ALGO_STAGE_COMPLETE
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE    17
+
+                    1023             
+0577                1024             CHK_NXT0_BD_S0:
+0577 E544           1025             MOV A, 0x44
+0579 B40006         1026             CJNE A, #0x00, CHK_NXT1_BD_S0
+057C 754401         1027             MOV 0x44, #0x01; ADD 0
+057F 0205B3         1028             LJMP ALGO_STAGE_COMPLETE
+                    1029             
+0582                1030             CHK_NXT1_BD_S0:
+0582 754801         1031             MOV 0x48, #0x01; ADD 0
+0585 0205B3         1032             LJMP ALGO_STAGE_COMPLETE
+                    1033             
+                    1034             ;---------------------------------
+                    1035             
+                    1036             
+                    1037             ;---------------------------------
+0588                1038             CHK_FORWARDDIAG_S0:
+0588 E542           1039             MOV A, 0x42
+058A 2544           1040             ADD A, 0x44
+058C 2546           1041             ADD A, 0x46
+058E B5301F         1042             CJNE A, 0x30, ALGO_STAGE_FAILED
+                    1043             ;MATCH FOUND FOR PATTERN
+                    1044             
+0591 753108         1045             MOV 0x31, #0x08
+                    1046     
+0594 E542           1047             MOV A, 0x42
+0596 B40006         1048             CJNE A, #0x00, CHK_NXT0_FD_S0
+0599 754201         1049             MOV 0x42, #0x01; ADD 0
+059C 0205B3         1050             LJMP ALGO_STAGE_COMPLETE
+                    1051             
+059F                1052             CHK_NXT0_FD_S0:
+059F E544           1053             MOV A, 0x44
+05A1 B40006         1054             CJNE A, #0x00, CHK_NXT1_FD_S0
+05A4 754401         1055             MOV 0x44, #0x01; ADD 0
+05A7 0205B3         1056             LJMP ALGO_STAGE_COMPLETE
+                    1057             
+05AA                1058             CHK_NXT1_FD_S0:
+05AA 754601         1059             MOV 0x46, #0x01; ADD 0
+05AD 0205B3         1060             LJMP ALGO_STAGE_COMPLETE
+                    1061             
+                    1062             ;---------------------------------
+                    1063             
+05B0                1064             ALGO_STAGE_FAILED:
+05B0 C204           1065             CLR 0x20.4; NO PATTERN FOUND
+05B2 22             1066             RET
+                    1067             
+05B3                1068             ALGO_STAGE_COMPLETE:
+05B3 D204           1069             SETB 0x20.4; FLAG STATING THE PATTERN WAS FOUND AND ACTION PERFORMED
+05B5 22             1070             RET
+                    1071             
+                    1072             
+                    1073             
+                    1074             
+                    1075             
+                    1076     
+                    1077     
+                    1078     ;-------------------------------------------
+05B6                1079     READ_BTN0:
+                    1080             ; P7            P6              P5              P4              P3              P2 
+                                          P1              P0
+                    1081             ;               31              23              22              21              13 
+                                          12              11
+                    1082             ;ADDRESS 0x71
+                    1083             ;SEND START CONDITION
+05B6 120705         1084             LCALL STARTC
+                    1085             ;SEND SLAVE ADDRESS
+05B9 7471           1086             MOV A,#0x71 ;PCF8574A ADDRESS WITH READ MODE
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE    18
+
+05BB 120715         1087             LCALL SEND
+05BE 12073D         1088             LCALL RECV
+05C1 12072B         1089             LCALL ACK
+05C4 12070C         1090             LCALL STOP
+                    1091             
+                    1092             ;A HAS THE VALUE
+05C7 F4             1093             CPL A
+05C8 F521           1094             MOV 0x21, A; MOVE BUTTON STATE TO BIT ADDRESSABLE RAM
+05CA 603A           1095             JZ GO_BACK_BTN0
+                    1096             
+                    1097             ;-------- CHECK WHICH BUTTON WAS CLICKED -------
+05CC 300805         1098             JNB 0x21.0, CHK_NXT_PCF0_1
+                    1099             ;11 CLICKED
+05CF 754D00         1100             MOV 0x4D, #0x00
+05D2 8030           1101             SJMP DONE_GETTING_PCF0
+                    1102             
+05D4                1103             CHK_NXT_PCF0_1:
+05D4 300905         1104             JNB 0x21.1, CHK_NXT_PCF0_2
+                    1105             ;12 CLICKED
+05D7 754D01         1106             MOV 0x4D, #0x01
+05DA 8028           1107             SJMP DONE_GETTING_PCF0
+                    1108             
+05DC                1109             CHK_NXT_PCF0_2:
+05DC 300A05         1110             JNB 0x21.2, CHK_NXT_PCF0_3
+                    1111             ;13 CLICKED
+05DF 754D02         1112             MOV 0x4D, #0x02
+05E2 8020           1113             SJMP DONE_GETTING_PCF0
+                    1114             
+05E4                1115             CHK_NXT_PCF0_3:
+05E4 300B05         1116             JNB 0x21.3, CHK_NXT_PCF0_4
+                    1117             ;21 CLICKED
+05E7 754D03         1118             MOV 0x4D, #0x03
+05EA 8018           1119             SJMP DONE_GETTING_PCF0
+                    1120             
+05EC                1121             CHK_NXT_PCF0_4:
+05EC 300C05         1122             JNB 0x21.4, CHK_NXT_PCF0_5
+                    1123             ;22 CLICKED
+05EF 754D04         1124             MOV 0x4D, #0x04
+05F2 8010           1125             SJMP DONE_GETTING_PCF0
+                    1126             
+05F4                1127             CHK_NXT_PCF0_5:
+05F4 300D05         1128             JNB 0x21.5, CHK_NXT_PCF0_6
+                    1129             ;23 CLICKED
+05F7 754D05         1130             MOV 0x4D, #0x05
+05FA 8008           1131             SJMP DONE_GETTING_PCF0
+                    1132             
+05FC                1133             CHK_NXT_PCF0_6:
+05FC 300E07         1134             JNB 0x21.6, GO_BACK_BTN0
+                    1135             ;31 CLICKED
+05FF 754D06         1136             MOV 0x4D, #0x06
+0602 8000           1137             SJMP DONE_GETTING_PCF0
+                    1138             
+0604                1139             DONE_GETTING_PCF0:
+0604 D202           1140             SETB 0x20.2; VALID BUTTON STATE
+                    1141             
+                    1142             
+0606                1143             GO_BACK_BTN0:
+0606 22             1144             RET
+                    1145             
+                    1146     ; ===============================================================================
+                    1147             
+0607                1148             READ_BTN1:
+                    1149             ; P7            P6              P5                      P4                      P3 
+                                                  P2                      P1              P0
+                    1150             ;                                                                                  
+                                          (RE)START               33              32
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE    19
+
+                    1151             
+                    1152             ;ADDRESS 0x73
+                    1153             ;SEND START CONDITION
+0607 120705         1154             LCALL STARTC
+                    1155             ;SEND SLAVE ADDRESS
+060A 7473           1156             MOV A,#0x73 ;PCF8574A ADDRESS WITH READ MODE
+060C 120715         1157             LCALL SEND
+060F 12073D         1158             LCALL RECV
+0612 12072B         1159             LCALL ACK
+0615 12070C         1160             LCALL STOP
+                    1161             
+                    1162             ;A HAS THE VALUE
+0618 F4             1163             CPL A
+0619 F521           1164             MOV 0x21, A; MOVE BUTTON STATE TO BIT ADDRESSABLE RAM
+061B 601A           1165             JZ GO_BACK_BTN1
+                    1166             
+                    1167             ;-------- CHECK WHICH BUTTON WAS CLICKED -------
+061D 300805         1168             JNB 0x21.0, CHK_NXT_PCF1_1
+                    1169             ;32 CLICKED
+0620 754D07         1170             MOV 0x4D, #0x07
+0623 8010           1171             SJMP DONE_GETTING_PCF1
+                    1172             
+0625                1173             CHK_NXT_PCF1_1:
+0625 300905         1174             JNB 0x21.1, CHK_NXT_PCF1_2
+                    1175             ;33 CLICKED
+0628 754D08         1176             MOV 0x4D, #0x08
+062B 8008           1177             SJMP DONE_GETTING_PCF1
+                    1178             
+062D                1179             CHK_NXT_PCF1_2:
+062D 300A07         1180             JNB 0x21.2, GO_BACK_BTN1
+                    1181             ;(RE)START CLICKED
+0630 754D09         1182             MOV 0x4D, #0x09
+0633 8000           1183             SJMP DONE_GETTING_PCF1
+                    1184     
+0635                1185             DONE_GETTING_PCF1:
+0635 D202           1186             SETB 0x20.2; VALID BUTTON STATE
+                    1187             
+                    1188             
+0637                1189             GO_BACK_BTN1:   
+0637 22             1190             RET
+                    1191             
+                    1192             
+                    1193             
+                    1194             
+                    1195     ;======= GAME SUBROUTINES ========
+0638                1196     SHOW_CHANCE_PLAYER_1:
+                    1197             ;SHOW '1' ON 7 SEGMENT DISPLAY
+0638 C201           1198             CLR 0x20.1; PLAYER 1 FLAG
+                    1199             
+063A C2AF           1200             CLR EA; DISABLE ISR
+063C 7460           1201             MOV A, #0x60; SHOW 1
+                    1202             
+063E 7F08           1203             MOV R7, #8; INIT A COUNTER
+                    1204             
+0640                1205             REPEAT_SEND_PLAYER1_DISP:
+0640 C2A2           1206             CLR CLK2
+0642 13             1207             RRC A
+0643 9290           1208             MOV DAT, C
+0645 D2A2           1209             SETB CLK2
+0647 DFF7           1210             DJNZ R7, REPEAT_SEND_PLAYER1_DISP
+                    1211             
+0649 D2AF           1212             SETB EA; ENABLE ISR
+064B 22             1213             RET
+                    1214             
+                    1215             
+064C                1216     SHOW_CHANCE_PLAYER_2:
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE    20
+
+                    1217             ;SHOW '2' ON 7 SEGMENT DISPLAY
+064C D201           1218             SETB 0x20.1; PLAYER 2 FLAG
+                    1219             
+                    1220     
+064E C2AF           1221             CLR EA; DISABLE ISR
+0650 74DA           1222             MOV A, #0xDA; SHOW 2
+                    1223             
+0652 7F08           1224             MOV R7, #8; INIT A COUNTER
+                    1225             
+0654                1226             REPEAT_SEND_PLAYER2_DISP:
+0654 C2A2           1227             CLR CLK2
+0656 13             1228             RRC A
+0657 9290           1229             MOV DAT, C
+0659 D2A2           1230             SETB CLK2
+065B DFF7           1231             DJNZ R7, REPEAT_SEND_PLAYER2_DISP
+                    1232             
+065D D2AF           1233             SETB EA; ENABLE ISR
+065F 22             1234             RET
+                    1235             
+                    1236             
+0660                1237     RESET_GAME:
+                    1238             ;CALL THIS SUBROUTINE TO RESET THE GAME
+0660 C2AF           1239             CLR EA; DISABLE INTERRUPTS
+0662 7848           1240             MOV R0, #0x48; INIT THE POINTER TO DISPLAY REGISTERS
+                    1241             
+0664                1242             RESET_CLEAR_DISP:
+0664 7600           1243             MOV @R0, #0x00
+0666 18             1244             DEC R0
+                    1245             
+0667 B83FFA         1246             CJNE R0, #0x3F, RESET_CLEAR_DISP
+                    1247             ;DONE CLEARING THE REGISTERS
+                    1248             
+066A D2AF           1249             SETB EA
+066C 22             1250             RET
+                    1251             
+                    1252             
+066D                1253     CLEAR_EXCEPT_1R:
+                    1254     ;---------- DISPLAY CONFIG --------------
+                    1255     ;                       |   40H  |      41H      |      42H      |
+                    1256     ;                       |   -    |      -        |      -        |
+                    1257     ;                       |   -    |      -        |      -        |
+066D 754300         1258             MOV 0x43, #0x00
+0670 754400         1259             MOV 0x44, #0x00
+0673 754500         1260             MOV 0x45, #0x00
+0676 754600         1261             MOV 0x46, #0x00
+0679 754700         1262             MOV 0x47, #0x00
+067C 754800         1263             MOV 0x48, #0x00
+                    1264             
+067F 22             1265             RET
+                    1266             
+                    1267             
+0680                1268     CLEAR_EXCEPT_2R:
+                    1269     ;---------- DISPLAY CONFIG --------------
+                    1270     ;                       |   -    |      -        |      -        |
+                    1271     ;                       |   41H  |      42H      |      43H      |
+                    1272     ;                       |   -    |      -        |      -        |
+0680 754000         1273             MOV 0x40, #0x00
+0683 754100         1274             MOV 0x41, #0x00
+0686 754200         1275             MOV 0x42, #0x00
+0689 754600         1276             MOV 0x46, #0x00
+068C 754700         1277             MOV 0x47, #0x00
+068F 754800         1278             MOV 0x48, #0x00
+                    1279             
+0692 22             1280             RET
+                    1281             
+0693                1282     CLEAR_EXCEPT_3R:
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE    21
+
+                    1283     ;---------- DISPLAY CONFIG --------------
+                    1284     ;                       |   -    |      -        |      -        |
+                    1285     ;                       |   -    |      -        |      -        |
+                    1286     ;                       |   46H  |      47H      |      48H  |
+0693 754000         1287             MOV 0x40, #0x00
+0696 754100         1288             MOV 0x41, #0x00
+0699 754200         1289             MOV 0x42, #0x00
+069C 754300         1290             MOV 0x43, #0x00
+069F 754400         1291             MOV 0x44, #0x00
+06A2 754500         1292             MOV 0x45, #0x00
+                    1293             
+06A5 22             1294             RET
+                    1295             
+                    1296             
+06A6                1297     CLEAR_EXCEPT_1C:
+                    1298     ;---------- DISPLAY CONFIG --------------
+                    1299     ;                       |   40H  |      -        |      -        |
+                    1300     ;                       |   43H  |      -        |      -        |
+                    1301     ;                       |   46H  |      -        |      -    |
+06A6 754100         1302             MOV 0x41, #0x00
+06A9 754200         1303             MOV 0x42, #0x00
+06AC 754400         1304             MOV 0x44, #0x00
+06AF 754500         1305             MOV 0x45, #0x00
+06B2 754700         1306             MOV 0x47, #0x00
+06B5 754800         1307             MOV 0x48, #0x00
+                    1308             
+06B8 22             1309             RET
+                    1310             
+06B9                1311     CLEAR_EXCEPT_2C:
+                    1312     ;---------- DISPLAY CONFIG --------------
+                    1313     ;                       |   -    |      41H      |      -        |
+                    1314     ;                       |   -    |      42H      |      -        |
+                    1315     ;                       |   -    |      43H      |      -    |
+06B9 754000         1316             MOV 0x40, #0x00
+06BC 754200         1317             MOV 0x42, #0x00
+06BF 754300         1318             MOV 0x43, #0x00
+06C2 754500         1319             MOV 0x45, #0x00
+06C5 754600         1320             MOV 0x46, #0x00
+06C8 754800         1321             MOV 0x48, #0x00
+                    1322             
+06CB 22             1323             RET
+                    1324             
+                    1325             
+06CC                1326     CLEAR_EXCEPT_3C:
+                    1327     ;---------- DISPLAY CONFIG --------------
+                    1328     ;                       |   -    |      -        |      42H      |
+                    1329     ;                       |   -    |      -        |      45H      |
+                    1330     ;                       |   -    |      -        |      48H  |
+06CC 754000         1331             MOV 0x40, #0x00
+06CF 754100         1332             MOV 0x41, #0x00
+06D2 754300         1333             MOV 0x43, #0x00
+06D5 754400         1334             MOV 0x44, #0x00
+06D8 754600         1335             MOV 0x46, #0x00
+06DB 754700         1336             MOV 0x47, #0x00
+                    1337             
+06DE 22             1338             RET
+                    1339             
+                    1340             
+06DF                1341     CLEAR_EXCEPT_BD:
+                    1342     ;---------- DISPLAY CONFIG --------------
+                    1343     ;                       |   40H  |      -        |      -        |
+                    1344     ;                       |   -    |      44H      |      -        |
+                    1345     ;                       |   -    |      -        |      48H  |
+06DF 754100         1346             MOV 0x41, #0x00
+06E2 754200         1347             MOV 0x42, #0x00
+06E5 754300         1348             MOV 0x43, #0x00
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE    22
+
+06E8 754500         1349             MOV 0x45, #0x00
+06EB 754600         1350             MOV 0x46, #0x00
+06EE 754700         1351             MOV 0x47, #0x00
+                    1352             
+06F1 22             1353             RET
+                    1354             
+                    1355             
+06F2                1356     CLEAR_EXCEPT_FD:
+                    1357     ;---------- DISPLAY CONFIG --------------
+                    1358     ;                       |   -    |      -        |      42H      |
+                    1359     ;                       |   -    |      44H      |      -        |
+                    1360     ;                       |   46H  |      -        |      -    |
+06F2 754000         1361             MOV 0x40, #0x00
+06F5 754100         1362             MOV 0x41, #0x00
+06F8 754300         1363             MOV 0x43, #0x00
+06FB 754500         1364             MOV 0x45, #0x00
+06FE 754700         1365             MOV 0x47, #0x00
+0701 754800         1366             MOV 0x48, #0x00
+                    1367             
+0704 22             1368             RET
+                    1369             
+                    1370     ;######################## I2C COMMANDS ###########################
+                    1371     
+                    1372     ;****************************************
+                    1373     ;START CONDITION FOR I2C COMMUNICATION
+                    1374     ;****************************************
+                    1375     
+0705                1376     STARTC:
+0705 D2A5           1377             SETB SCL
+0707 C2A6           1378             CLR SDA
+0709 C2A5           1379             CLR SCL
+070B 22             1380             RET
+                    1381      
+                    1382      
+                    1383     ;*****************************************
+                    1384     ;STOP CONDITION FOR I2C BUS
+                    1385     ;*****************************************
+                    1386     
+070C                1387     STOP:
+070C C2A5           1388             CLR SCL
+070E C2A6           1389             CLR SDA
+0710 D2A5           1390             SETB SCL
+0712 D2A6           1391             SETB SDA
+0714 22             1392             RET
+                    1393             
+                    1394     ;*****************************************
+                    1395     ;SENDING DATA TO SLAVE ON I2C BUS
+                    1396     ;*****************************************
+                    1397     
+0715                1398     SEND:
+0715 7C08           1399             MOV R4,#08
+0717                1400     BACK:
+0717 C2A5           1401             CLR SCL
+0719 33             1402             RLC A
+071A 92A6           1403             MOV SDA,C
+071C D2A5           1404             SETB SCL
+071E DCF7           1405             DJNZ R4,BACK
+0720 C2A5           1406             CLR SCL
+0722 D2A6           1407             SETB SDA
+0724 D2A5           1408             SETB SCL
+0726 A2A6           1409             MOV C, SDA
+0728 C2A5           1410             CLR SCL
+                    1411             
+072A 22             1412             RET
+                    1413      
+                    1414      
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE    23
+
+                    1415     ;*****************************************
+                    1416     ;ACK AND NAK FOR I2C BUS
+                    1417     ;*****************************************
+                    1418     
+072B                1419     ACK:
+072B C2A6           1420             CLR SDA
+072D D2A5           1421             SETB SCL
+072F C2A5           1422             CLR SCL
+0731 D2A6           1423             SETB SDA
+0733 22             1424             RET
+                    1425     
+0734                1426     NAK:
+0734 D2A6           1427             SETB SDA
+0736 D2A5           1428             SETB SCL
+0738 C2A5           1429             CLR SCL
+073A D2A5           1430             SETB SCL
+073C 22             1431             RET
+                    1432      
+                    1433      
+                    1434     ;*****************************************
+                    1435     ;RECEIVING DATA FROM SLAVE ON I2C BUS
+                    1436     ;*****************************************
+                    1437     
+073D                1438     RECV:
+073D 7C08           1439             MOV R4,#08
+073F                1440     BACK2:
+073F C2A5           1441             CLR SCL
+0741 D2A5           1442             SETB SCL
+0743 A2A6           1443             MOV C,SDA
+0745 33             1444             RLC A
+0746 DCF7           1445             DJNZ R4,BACK2
+0748 C2A5           1446             CLR SCL
+                    1447             
+074A 22             1448             RET
+                    1449     
+                    1450             
+                    1451     END
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE    24
+
+SYMBOL TABLE LISTING
+------ ----- -------
+
+
+N A M E                          T Y P E  V A L U E   ATTRIBUTES
+
+ACK . . . . . . . . . . . . . .  C ADDR   072BH   A   
+ACTION_INVALID. . . . . . . . .  C ADDR   033BH   A   
+ACTION_PERFORMED. . . . . . . .  C ADDR   0341H   A   
+ALGO_STAGE_COMPLETE . . . . . .  C ADDR   05B3H   A   
+ALGO_STAGE_FAILED . . . . . . .  C ADDR   05B0H   A   
+B . . . . . . . . . . . . . . .  D ADDR   00F0H   A   
+BACK. . . . . . . . . . . . . .  C ADDR   0717H   A   
+BACK2 . . . . . . . . . . . . .  C ADDR   073FH   A   
+BTN0. . . . . . . . . . . . . .  B ADDR   00A0H.3 A   
+BTN1. . . . . . . . . . . . . .  B ADDR   00A0H.4 A   
+BTN_0_STATE_CHANGE. . . . . . .  C ADDR   02A5H   A   
+BTN_1_STATE_CHANGE. . . . . . .  C ADDR   02B0H   A   
+BTN_1_STATE_CHANGE_VALIDATION .  C ADDR   040DH   A   
+CHK_1STCOL. . . . . . . . . . .  C ADDR   038FH   A   
+CHK_1STCOL_S0 . . . . . . . . .  C ADDR   04E8H   A   
+CHK_1STCOL_X. . . . . . . . . .  C ADDR   039EH   A   
+CHK_1STROW_X. . . . . . . . . .  C ADDR   0356H   A   
+CHK_2NDCOL. . . . . . . . . . .  C ADDR   03A7H   A   
+CHK_2NDCOL_S0 . . . . . . . . .  C ADDR   0510H   A   
+CHK_2NDCOL_X. . . . . . . . . .  C ADDR   03B6H   A   
+CHK_2NDROW. . . . . . . . . . .  C ADDR   035FH   A   
+CHK_2NDROW_S0 . . . . . . . . .  C ADDR   0498H   A   
+CHK_2NDROW_X. . . . . . . . . .  C ADDR   036EH   A   
+CHK_3RDCOL. . . . . . . . . . .  C ADDR   03BFH   A   
+CHK_3RDCOL_S0 . . . . . . . . .  C ADDR   0538H   A   
+CHK_3RDCOL_X. . . . . . . . . .  C ADDR   03CEH   A   
+CHK_3RDROW. . . . . . . . . . .  C ADDR   0377H   A   
+CHK_3RDROW_S0 . . . . . . . . .  C ADDR   04C0H   A   
+CHK_3RDROW_X. . . . . . . . . .  C ADDR   0386H   A   
+CHK_BACKDIAG. . . . . . . . . .  C ADDR   03D7H   A   
+CHK_BACKDIAG_S0 . . . . . . . .  C ADDR   0560H   A   
+CHK_BACKDIAG_X. . . . . . . . .  C ADDR   03E6H   A   
+CHK_FORWARDDIAG . . . . . . . .  C ADDR   03EFH   A   
+CHK_FORWARDDIAG_S0. . . . . . .  C ADDR   0588H   A   
+CHK_FORWARDDIAG_X . . . . . . .  C ADDR   03FEH   A   
+CHK_NXT0_1C_S0. . . . . . . . .  C ADDR   04FFH   A   
+CHK_NXT0_1R_S0. . . . . . . . .  C ADDR   0487H   A   
+CHK_NXT0_2C_S0. . . . . . . . .  C ADDR   0527H   A   
+CHK_NXT0_2R_S0. . . . . . . . .  C ADDR   04AFH   A   
+CHK_NXT0_3C_S0. . . . . . . . .  C ADDR   054FH   A   
+CHK_NXT0_3R_S0. . . . . . . . .  C ADDR   04D7H   A   
+CHK_NXT0_BD_S0. . . . . . . . .  C ADDR   0577H   A   
+CHK_NXT0_FD_S0. . . . . . . . .  C ADDR   059FH   A   
+CHK_NXT1_1C_S0. . . . . . . . .  C ADDR   050AH   A   
+CHK_NXT1_1R_S0. . . . . . . . .  C ADDR   0492H   A   
+CHK_NXT1_2C_S0. . . . . . . . .  C ADDR   0532H   A   
+CHK_NXT1_2R_S0. . . . . . . . .  C ADDR   04BAH   A   
+CHK_NXT1_3C_S0. . . . . . . . .  C ADDR   055AH   A   
+CHK_NXT1_3R_S0. . . . . . . . .  C ADDR   04E2H   A   
+CHK_NXT1_BD_S0. . . . . . . . .  C ADDR   0582H   A   
+CHK_NXT1_FD_S0. . . . . . . . .  C ADDR   05AAH   A   
+CHK_NXT_ADD_0_PATT1 . . . . . .  C ADDR   0452H   A   
+CHK_NXT_ADD_0_PATT2 . . . . . .  C ADDR   045CH   A   
+CHK_NXT_ADD_O_PATT0 . . . . . .  C ADDR   0448H   A   
+CHK_NXT_PCF0_1. . . . . . . . .  C ADDR   05D4H   A   
+CHK_NXT_PCF0_2. . . . . . . . .  C ADDR   05DCH   A   
+CHK_NXT_PCF0_3. . . . . . . . .  C ADDR   05E4H   A   
+CHK_NXT_PCF0_4. . . . . . . . .  C ADDR   05ECH   A   
+CHK_NXT_PCF0_5. . . . . . . . .  C ADDR   05F4H   A   
+CHK_NXT_PCF0_6. . . . . . . . .  C ADDR   05FCH   A   
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE    25
+
+CHK_NXT_PCF1_1. . . . . . . . .  C ADDR   0625H   A   
+CHK_NXT_PCF1_2. . . . . . . . .  C ADDR   062DH   A   
+CHK_NXT_PERFORM_ACTION0 . . . .  C ADDR   02D3H   A   
+CHK_NXT_PERFORM_ACTION1 . . . .  C ADDR   02E0H   A   
+CHK_NXT_PERFORM_ACTION2 . . . .  C ADDR   02EDH   A   
+CHK_NXT_PERFORM_ACTION3 . . . .  C ADDR   02FAH   A   
+CHK_NXT_PERFORM_ACTION4 . . . .  C ADDR   0307H   A   
+CHK_NXT_PERFORM_ACTION5 . . . .  C ADDR   0314H   A   
+CHK_NXT_PERFORM_ACTION6 . . . .  C ADDR   0321H   A   
+CHK_NXT_PERFORM_ACTION7 . . . .  C ADDR   032EH   A   
+CHK_NXT_PERFORM_ACTION8 . . . .  C ADDR   033EH   A   
+CLEAR_EXCEPT_1C . . . . . . . .  C ADDR   06A6H   A   
+CLEAR_EXCEPT_1R . . . . . . . .  C ADDR   066DH   A   
+CLEAR_EXCEPT_2C . . . . . . . .  C ADDR   06B9H   A   
+CLEAR_EXCEPT_2R . . . . . . . .  C ADDR   0680H   A   
+CLEAR_EXCEPT_3C . . . . . . . .  C ADDR   06CCH   A   
+CLEAR_EXCEPT_3R . . . . . . . .  C ADDR   0693H   A   
+CLEAR_EXCEPT_BD . . . . . . . .  C ADDR   06DFH   A   
+CLEAR_EXCEPT_FD . . . . . . . .  C ADDR   06F2H   A   
+CLK . . . . . . . . . . . . . .  B ADDR   0090H.1 A   
+CLK1. . . . . . . . . . . . . .  B ADDR   0090H.2 A   
+CLK2. . . . . . . . . . . . . .  B ADDR   00A0H.2 A   
+COMPLETED_EXEC_COMPUTER_ALGO. .  C ADDR   046FH   A   
+COMPUTER_PLAYS. . . . . . . . .  C ADDR   027DH   A   
+COMP_ALGO_CHECK_CONSECUTIVES. .  C ADDR   0470H   A   
+DAT . . . . . . . . . . . . . .  B ADDR   0090H.0 A   
+DONE_GETTING_PCF0 . . . . . . .  C ADDR   0604H   A   
+DONE_GETTING_PCF1 . . . . . . .  C ADDR   0635H   A   
+EA. . . . . . . . . . . . . . .  B ADDR   00A8H.7 A   
+ET1 . . . . . . . . . . . . . .  B ADDR   00A8H.3 A   
+EXEC_COMPUTER_ALGO. . . . . . .  C ADDR   041DH   A   
+GAME_WIN_CHECK_VALIDITY . . . .  C ADDR   0347H   A   
+GET_DOT_PATTERN . . . . . . . .  C ADDR   0100H   A   
+GO_BACK_BTN0. . . . . . . . . .  C ADDR   0606H   A   
+GO_BACK_BTN1. . . . . . . . . .  C ADDR   0637H   A   
+INVALID_BTN_STATE_GOBACK. . . .  C ADDR   029BH   A   
+KEEP_SHIFTING_DAT . . . . . . .  C ADDR   0047H   A   
+NAK . . . . . . . . . . . . . .  C ADDR   0734H   A   
+NO_VALIDATION_PATTERN . . . . .  C ADDR   0407H   A   
+OE_SHFT . . . . . . . . . . . .  B ADDR   0090H.3 A   
+P1. . . . . . . . . . . . . . .  D ADDR   0090H   A   
+P2. . . . . . . . . . . . . . .  D ADDR   00A0H   A   
+PERFORM_ACTION. . . . . . . . .  C ADDR   02C4H   A   
+PERFORM_BTN_ACTION. . . . . . .  C ADDR   02BBH   A   
+PLAYER_1_STEP_COMPLETE. . . . .  C ADDR   026FH   A   
+PLAYER_1_STEP_INVALID . . . . .  C ADDR   026DH   A   
+PLAYER_2_O. . . . . . . . . . .  C ADDR   02C2H   A   
+PLAYER_2_STEP_COMPLETE. . . . .  C ADDR   0264H   A   
+PLAYER_2_STEP_INVALID . . . . .  C ADDR   027BH   A   
+PLAY_MODE . . . . . . . . . . .  B ADDR   00A0H.7 A   
+READ_BTN0 . . . . . . . . . . .  C ADDR   05B6H   A   
+READ_BTN1 . . . . . . . . . . .  C ADDR   0607H   A   
+RECV. . . . . . . . . . . . . .  C ADDR   073DH   A   
+REPEAT_CYCLE. . . . . . . . . .  C ADDR   0039H   A   
+REPEAT_MAIN . . . . . . . . . .  C ADDR   0031H   A   
+REPEAT_SEND_PLAYER1_DISP. . . .  C ADDR   0640H   A   
+REPEAT_SEND_PLAYER2_DISP. . . .  C ADDR   0654H   A   
+REPEAT_SUBMAIN. . . . . . . . .  C ADDR   0037H   A   
+REPEAT_TILL_PATT_FOUND. . . . .  C ADDR   0468H   A   
+RESET_CLEAR_DISP. . . . . . . .  C ADDR   0664H   A   
+RESET_GAME. . . . . . . . . . .  C ADDR   0660H   A   
+RESET_JUMP. . . . . . . . . . .  C ADDR   0261H   A   
+RETURN_FROM_DISPLAY_SUBR. . . .  C ADDR   0076H   A   
+SCL . . . . . . . . . . . . . .  B ADDR   00A0H.5 A   
+SDA . . . . . . . . . . . . . .  B ADDR   00A0H.6 A   
+SEND. . . . . . . . . . . . . .  C ADDR   0715H   A   
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2024 10:58:59 PAGE    26
+
+SHOW_CHANCE_PLAYER_1. . . . . .  C ADDR   0638H   A   
+SHOW_CHANCE_PLAYER_2. . . . . .  C ADDR   064CH   A   
+STAGENXT0_JUMP. . . . . . . . .  C ADDR   0432H   A   
+STAGENXT1_JUMP. . . . . . . . .  C ADDR   0466H   A   
+STAGE_2_DISPLAY . . . . . . . .  C ADDR   005DH   A   
+START . . . . . . . . . . . . .  C ADDR   0250H   A   
+STARTC. . . . . . . . . . . . .  C ADDR   0705H   A   
+STOP. . . . . . . . . . . . . .  C ADDR   070CH   A   
+TF0 . . . . . . . . . . . . . .  B ADDR   0088H.5 A   
+TH0 . . . . . . . . . . . . . .  D ADDR   008CH   A   
+TH1 . . . . . . . . . . . . . .  D ADDR   008DH   A   
+TL0 . . . . . . . . . . . . . .  D ADDR   008AH   A   
+TL1 . . . . . . . . . . . . . .  D ADDR   008BH   A   
+TMOD. . . . . . . . . . . . . .  D ADDR   0089H   A   
+TR0 . . . . . . . . . . . . . .  B ADDR   0088H.4 A   
+TR1 . . . . . . . . . . . . . .  B ADDR   0088H.6 A   
+VALIDATION_PATTER . . . . . . .  C ADDR   0408H   A   
+VALID_BTN_STATE_GOBACK. . . . .  C ADDR   02A0H   A   
+WAIT_COMP_PLAY. . . . . . . . .  C ADDR   0289H   A   
+WAIT_FOR_PLAYER_1 . . . . . . .  C ADDR   0267H   A   
+WAIT_FOR_PLAYER_2 . . . . . . .  C ADDR   0275H   A   
+WAIT_FOR_RESET_AFTER_VALIDATION  C ADDR   0408H   A   
+
+
+REGISTER BANK(S) USED: 0 
+
+
+ASSEMBLY COMPLETE.  0 WARNING(S), 0 ERROR(S)
